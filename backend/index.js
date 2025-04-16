@@ -1,11 +1,25 @@
 const express = require("express");
 const app = express();
+const projectRouter = require("./controllers/project.controller");
+const connectDB = require("./database/db");
+const taskRouter = require("./controllers/task.controller");
+require("dotenv").config();
 
-app.get("/", (req, res) => {
-  res.send("Hello, World!");
-});
+app.use(projectRouter);
+app.use(taskRouter)
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+
+const start = async () => {
+  try {
+    await connectDB();
+    app.listen(PORT, () => {
+      //   seedRoles()
+      console.log("App is running on " + "http://localhost:" + PORT);
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+start();
