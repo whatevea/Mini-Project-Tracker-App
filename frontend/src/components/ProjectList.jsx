@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { useFetch } from "../../http/useFetch";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../http/api";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-const ProjectList = ({ onProjectSelect }) => {
+const ProjectList = ({ onProjectSelect, selectedProject }) => {
   const [newProject, setNewProject] = useState({ title: "", description: "" });
   const queryClient = useQueryClient();
 
-  // Fetch projects using the custom hook
-  const { data, isLoading, isError, error } = useFetch({
-    endpoint: "/project",
-    key: ["projects"],
+  // Fetch projects
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["projects"],
+    queryFn: async () => {
+      const response = await api.get("/project");
+      return response.data;
+    },
   });
 
   // Add project mutation
@@ -20,7 +22,6 @@ const ProjectList = ({ onProjectSelect }) => {
       return response.data;
     },
     onSuccess: () => {
-      // Reset form and invalidate projects query to trigger refetch
       setNewProject({ title: "", description: "" });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
@@ -34,6 +35,12 @@ const ProjectList = ({ onProjectSelect }) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      if (
+        selectedProject &&
+        selectedProject._id === deleteProjectMutation.variables
+      ) {
+        onProjectSelect(null);
+      }
     },
   });
 
@@ -42,37 +49,34 @@ const ProjectList = ({ onProjectSelect }) => {
     setNewProject({ ...newProject, [name]: value });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    addProjectMutation.mutate(newProject);
+    if (newProject.title.trim()) {
+      addProjectMutation.mutate(newProject);
+    }
   };
 
   const handleDeleteProject = (e, projectId) => {
-    e.stopPropagation(); // Prevent triggering the onClick of the parent element
-    deleteProjectMutation.mutate(projectId);
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this project?")) {
+      deleteProjectMutation.mutate(projectId);
+    }
   };
-
-  if (isError) {
-    return (
-      <div className="p-4 bg-red-100 text-red-700 rounded-md">
-        Error loading projects: {error?.message || "Unknown error"}
-      </div>
-    );
-  }
 
   const projects = data?.data || [];
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Projects</h2>
+    <div className="bg-white rounded-lg shadow-md p-6 h-full">
+      <h2 className="text-xl font-bold mb-4 text-gray-800">Projects</h2>
 
-      <form onSubmit={handleSubmit} className="mb-8">
-        <div className="mb-4">
+      {/* Add Project Form */}
+      <form onSubmit={handleSubmit} className="mb-6">
+        <div className="mb-3">
           <label
             htmlFor="title"
             className="block text-sm font-medium text-gray-700 mb-1"
           >
-            Title:
+            Title
           </label>
           <input
             type="text"
@@ -82,14 +86,15 @@ const ProjectList = ({ onProjectSelect }) => {
             onChange={handleInputChange}
             required
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="Project name"
           />
         </div>
-        <div className="mb-4">
+        <div className="mb-3">
           <label
             htmlFor="description"
             className="block text-sm font-medium text-gray-700 mb-1"
           >
-            Description:
+            Description
           </label>
           <textarea
             id="description"
@@ -97,90 +102,55 @@ const ProjectList = ({ onProjectSelect }) => {
             value={newProject.description}
             onChange={handleInputChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            rows="3"
+            rows="2"
+            placeholder="Project description"
           />
         </div>
         <button
           type="submit"
           disabled={addProjectMutation.isPending}
-          className={`px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-            addProjectMutation.isPending ? "opacity-70 cursor-not-allowed" : ""
-          }`}
+          className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-70"
         >
-          {addProjectMutation.isPending ? (
-            <span className="flex items-center">
-              <svg
-                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              Adding...
-            </span>
-          ) : (
-            "Add Project"
-          )}
+          {addProjectMutation.isPending ? "Adding..." : "Add Project"}
         </button>
       </form>
 
+      {/* Project List */}
       <div>
-        <h3 className="text-xl font-semibold mb-4 text-gray-700">
-          Project List
-        </h3>
+        <h3 className="text-lg font-medium mb-3 text-gray-700">My Projects</h3>
 
         {isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <svg
-              className="animate-spin h-8 w-8 text-indigo-500"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+          </div>
+        ) : isError ? (
+          <div className="text-red-500 p-3 bg-red-50 rounded-md">
+            Error loading projects. Please try again.
           </div>
         ) : projects.length === 0 ? (
-          <p className="text-gray-500 italic py-4">No projects found</p>
+          <p className="text-gray-500 italic py-4 text-center">
+            No projects found
+          </p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-2 overflow-y-auto max-h-[400px]">
             {projects.map((project) => (
               <li
                 key={project._id}
                 onClick={() => onProjectSelect(project)}
-                className="border border-gray-200 rounded-md p-4 hover:bg-gray-50 cursor-pointer transition-colors flex justify-between items-start"
+                className={`border rounded-md p-3 hover:bg-gray-50 cursor-pointer transition-colors flex justify-between items-start ${
+                  selectedProject && selectedProject._id === project._id
+                    ? "border-indigo-500 bg-indigo-50"
+                    : "border-gray-200"
+                }`}
               >
                 <div>
                   <h4 className="font-medium text-gray-800">{project.title}</h4>
-                  <p className="text-gray-600 text-sm mt-1">
-                    {project.description}
-                  </p>
-                  <div className="mt-2 text-xs text-gray-500">
+                  {project.description && (
+                    <p className="text-gray-600 text-sm mt-1">
+                      {project.description}
+                    </p>
+                  )}
+                  <div className="mt-1 text-xs text-gray-500">
                     Tasks: {project.tasks?.length || 0}
                   </div>
                 </div>
@@ -188,6 +158,7 @@ const ProjectList = ({ onProjectSelect }) => {
                   onClick={(e) => handleDeleteProject(e, project._id)}
                   disabled={deleteProjectMutation.isPending}
                   className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"
+                  title="Delete project"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"

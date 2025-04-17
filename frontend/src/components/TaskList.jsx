@@ -1,28 +1,43 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useFetch } from "../../http/useFetch";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
 import api from "../../http/api";
 
 const TaskList = ({ project }) => {
   const STATUS_OPTIONS = ["todo", "in-progress", "done"];
   const queryClient = useQueryClient();
 
-  // Fetch tasks for the selected project using the custom hook
-  const { data, isLoading, isError, error } = useFetch({
-    endpoint: `/project/${project?._id}/tasks`,
-    key: ["tasks", project?._id],
+  // Fetch tasks for the selected project
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["tasks", project?._id],
+    queryFn: async () => {
+      const response = await api.get(`/project/${project._id}/tasks`);
+      return response.data;
+    },
     enabled: !!project,
   });
 
   // Update task status mutation
   const updateTaskMutation = useMutation({
     mutationFn: async ({ taskId, status }) => {
-      const response = await api.put(`/task/${taskId}/status`, { status });
+      const response = await api.put(`/task/${taskId}/status`, {
+        status,
+      });
       return response.data;
     },
     onSuccess: () => {
-      // Invalidate and refetch tasks after status update
       queryClient.invalidateQueries({ queryKey: ["tasks", project?._id] });
+    },
+  });
+
+  // Delete task mutation
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId) => {
+      const response = await api.delete(`/task/${taskId}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", project?._id] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 
@@ -30,45 +45,34 @@ const TaskList = ({ project }) => {
     updateTaskMutation.mutate({ taskId, status: newStatus });
   };
 
-  if (!project) {
-    return (
-      <div className="p-4 text-center text-gray-500">
-        Please select a project to view tasks
-      </div>
-    );
-  }
+  const handleDeleteTask = (taskId) => {
+    if (window.confirm("Are you sure you want to delete this task?")) {
+      deleteTaskMutation.mutate(taskId);
+    }
+  };
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <svg
-          className="animate-spin h-8 w-8 text-indigo-500"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          ></circle>
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          ></path>
-        </svg>
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold mb-4 text-gray-800">
+          Tasks for {project.title}
+        </h2>
+        <div className="flex justify-center items-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+        </div>
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="p-4 bg-red-100 text-red-700 rounded-md">
-        Error loading tasks: {error?.message || "Unknown error"}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold mb-4 text-gray-800">
+          Tasks for {project.title}
+        </h2>
+        <div className="p-4 bg-red-100 text-red-700 rounded-md">
+          Error loading tasks. Please try again.
+        </div>
       </div>
     );
   }
@@ -104,18 +108,40 @@ const TaskList = ({ project }) => {
               )} p-3 rounded-md border border-gray-200 flex justify-between items-center`}
             >
               <span className="font-medium text-gray-800">{task.title}</span>
-              <select
-                value={task.status}
-                onChange={(e) => handleStatusChange(task._id, e.target.value)}
-                className="ml-2 p-1.5 text-sm border rounded bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                disabled={updateTaskMutation.isPending}
-              >
-                {STATUS_OPTIONS.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center space-x-2">
+                <select
+                  value={task.status}
+                  onChange={(e) => handleStatusChange(task._id, e.target.value)}
+                  className="p-1.5 text-sm border rounded bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  disabled={updateTaskMutation.isPending}
+                >
+                  {STATUS_OPTIONS.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => handleDeleteTask(task._id)}
+                  className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"
+                  title="Delete task"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
             </li>
           ))}
         </ul>
