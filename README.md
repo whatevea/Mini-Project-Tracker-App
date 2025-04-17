@@ -31,16 +31,9 @@ cd Mini-Project-Tracker-App/backend
 npm install
 ```
 
-4. Create a `.env` file in the backend directory with the following variables:
 
-```
-PORT=3000
-MONGODB_URI=mongodb://localhost:27017/project-tracker
-```
 
-Note: Replace the MONGODB_URI with your MongoDB connection string if using MongoDB Atlas.
-
-5. Start the backend server:
+4. Start the backend server:
 
 ```bash
 npm run dev
