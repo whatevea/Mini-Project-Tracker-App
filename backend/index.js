@@ -4,9 +4,15 @@ const projectRouter = require("./controllers/project.controller");
 const connectDB = require("./database/db");
 const taskRouter = require("./controllers/task.controller");
 require("dotenv").config();
+const cors = require("cors");
 
+app.use(cors());
+app.use(express.json());
+
+//routes
 app.use(projectRouter);
-app.use(taskRouter)
+app.use(taskRouter);
+//routes
 
 const PORT = process.env.PORT || 3000;
 
