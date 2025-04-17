@@ -6,7 +6,6 @@ const TaskList = ({ project }) => {
   const STATUS_OPTIONS = ["todo", "in-progress", "done"];
   const queryClient = useQueryClient();
 
-  // Fetch tasks for the selected project
   const { data, isLoading, isError } = useQuery({
     queryKey: ["tasks", project?._id],
     queryFn: async () => {
@@ -16,7 +15,6 @@ const TaskList = ({ project }) => {
     enabled: !!project,
   });
 
-  // Update task status mutation
   const updateTaskMutation = useMutation({
     mutationFn: async ({ taskId, status }) => {
       const response = await api.put(`/task/${taskId}/status`, {
@@ -29,7 +27,6 @@ const TaskList = ({ project }) => {
     },
   });
 
-  // Delete task mutation
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId) => {
       const response = await api.delete(`/task/${taskId}`);

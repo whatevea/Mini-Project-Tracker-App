@@ -6,7 +6,6 @@ const ProjectList = ({ onProjectSelect, selectedProject }) => {
   const [newProject, setNewProject] = useState({ title: "", description: "" });
   const queryClient = useQueryClient();
 
-  // Fetch projects
   const { data, isLoading, isError } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
@@ -15,7 +14,6 @@ const ProjectList = ({ onProjectSelect, selectedProject }) => {
     },
   });
 
-  // Add project mutation
   const addProjectMutation = useMutation({
     mutationFn: async (projectData) => {
       const response = await api.post("/project/add", projectData);
@@ -27,7 +25,6 @@ const ProjectList = ({ onProjectSelect, selectedProject }) => {
     },
   });
 
-  // Delete project mutation
   const deleteProjectMutation = useMutation({
     mutationFn: async (projectId) => {
       const response = await api.delete(`/project/${projectId}`);
@@ -69,7 +66,6 @@ const ProjectList = ({ onProjectSelect, selectedProject }) => {
     <div className="bg-white rounded-lg shadow-md p-6 h-full">
       <h2 className="text-xl font-bold mb-4 text-gray-800">Projects</h2>
 
-      {/* Add Project Form */}
       <form onSubmit={handleSubmit} className="mb-6">
         <div className="mb-3">
           <label
@@ -115,7 +111,6 @@ const ProjectList = ({ onProjectSelect, selectedProject }) => {
         </button>
       </form>
 
-      {/* Project List */}
       <div>
         <h3 className="text-lg font-medium mb-3 text-gray-700">My Projects</h3>
 

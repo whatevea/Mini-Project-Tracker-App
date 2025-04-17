@@ -6,14 +6,12 @@ const AddTask = ({ project }) => {
   const STATUS_OPTIONS = ["todo", "in-progress", "done"];
   const queryClient = useQueryClient();
 
-  // Add task mutation
   const addTaskMutation = useMutation({
     mutationFn: async (taskData) => {
       const response = await api.post("/task", taskData);
       return response.data;
     },
     onSuccess: () => {
-      // Reset form and invalidate queries to trigger refetch
       setNewTask({ title: "", status: "todo" });
       queryClient.invalidateQueries({ queryKey: ["tasks", project?._id] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
